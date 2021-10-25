@@ -65,13 +65,5 @@ namespace PaperWorks.Common.Animations
             [NotNull] this Action<float> tConsumer, [NotNull] Func<float, float> normalizer
         )
             => (t) => tConsumer(normalizer(t));
-
-        public static void Test()
-        {
-            Action<float> tConsumer = t => Debug.Log(t);
-            tConsumer = tConsumer.Normalized(NormalizationFunctions.SmoothStep);
-
-            Interpolate(4, tConsumer, () => Debug.Log("Done"));
-        }
     }
 }
