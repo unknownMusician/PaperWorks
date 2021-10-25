@@ -9,21 +9,22 @@ namespace PaperWorks.Workers
 {
     public sealed class WorkerHolder : MonoBehaviour
     {
-        [SerializeField] private GameObject _prefab;
+        // todo
+        // [SerializeField] private GameObject _prefab;
         [NotNull] private readonly Queue<Transform> _workers = new Queue<Transform>();
 
         public event Action<IEnumerable<Transform>> OnChange;
 
         // todo
-        private IEnumerator Start()
-        {
-            while (true)
-            {
-                Enqueue(Object.Instantiate(_prefab).transform);
-
-                yield return new WaitForSeconds(1.0f);
-            }
-        }
+        // private IEnumerator Start()
+        // {
+        //     while (true)
+        //     {
+        //         Enqueue(Object.Instantiate(_prefab).transform);
+        //
+        //         yield return new WaitForSeconds(1.0f);
+        //     }
+        // }
 
         public void Enqueue([NotNull] Transform worker)
         {
