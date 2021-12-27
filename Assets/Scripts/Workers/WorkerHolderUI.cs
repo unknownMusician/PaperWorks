@@ -1,35 +1,44 @@
-﻿using System;
-using System.Collections;
+﻿#nullable enable
+
+using System;
 using System.Collections.Generic;
-using System.IO.Pipes;
 using System.Linq;
-using JetBrains.Annotations;
-using PaperWorks.Common;
+using System.Threading;
 using PaperWorks.Common.Animations;
 using UnityEngine;
 
 namespace PaperWorks.Workers
 {
-    public sealed class WorkerHolderUI : MonoBehaviour
+    public class WorkerHolderUI : IDisposable
     {
-        [SerializeField] private Vector2Int _firstElementPosition;
-        [SerializeField] private Vector2Int _lastElementPosition;
-        [SerializeField] private WorkerHolder _holder;
-        [SerializeField] private float _moveTime;
+        protected readonly Vector2Int FirstElementPosition;
+        protected readonly Vector2Int LastElementPosition;
+        protected readonly WorkerHolder Holder;
+        protected readonly float MoveTime;
+        protected CancellationTokenSource Cancellation;
 
-        private Cancellation _cancellation = new Cancellation();
+        public Vector2Int NewElementPosition => LastElementPosition;
 
-        public Vector2Int NewElementPosition => _lastElementPosition;
-
-        private void OnValidate() => this.AssertNotNull(_holder);
-
-        private void Awake() => _holder.OnChange += HandleWorkersChanged;
-        private void OnDestroy() => _holder.OnChange -= HandleWorkersChanged;
-
-        public void HandleWorkersChanged([NotNull] IEnumerable<Transform> workers)
+        public WorkerHolderUI(
+            Vector2Int firstElementPosition, Vector2Int lastElementPosition, WorkerHolder holder, float moveTime
+        )
         {
-            _cancellation.Cancel();
-            _cancellation = new Cancellation();
+            FirstElementPosition = firstElementPosition;
+            LastElementPosition = lastElementPosition;
+            Holder = holder;
+            MoveTime = moveTime;
+
+            Cancellation = new CancellationTokenSource();
+
+            Holder.OnChange += HandleWorkersChanged;
+        }
+        
+        public void Dispose() => Holder.OnChange -= HandleWorkersChanged;
+
+        public void HandleWorkersChanged(IEnumerable<Transform> workers)
+        {
+            Cancellation.Cancel();
+            Cancellation = new CancellationTokenSource();
 
             Action<float> tConsumer = (t) =>
             {
@@ -38,7 +47,7 @@ namespace PaperWorks.Workers
 
                 foreach (Transform worker in workers)
                 {
-                    Vector2 end = Vector2.Lerp(_firstElementPosition, _lastElementPosition, (float)i / size);
+                    Vector2 end = Vector2.Lerp(FirstElementPosition, LastElementPosition, (float)i / size);
 
                     TConsumers.MovePosition(worker, (Vector2)worker.position, end, t);
 
@@ -46,28 +55,17 @@ namespace PaperWorks.Workers
                 }
             };
 
-            StartCoroutine(Interpolation.Interpolate(_cancellation, _moveTime, tConsumer.Normalized(NormalizationFunctions.SmoothStep)));
+            Interpolation.Interpolate(Cancellation.Token, MoveTime, tConsumer.Normalized(NormalizationFunctions.SmoothStep));
         }
 
-        private IEnumerator Test2(out int g)
-        {
-            g = 5;
-
-            return Test1();
-        }
-
-        private IEnumerator Test1()
-        {
-            yield return 1;
-        }
-
-        private void OnDrawGizmosSelected()
+        public void OnDrawGizmosSelected()
         {
             const int radius = 15;
+            
             Gizmos.color = Color.green;
-            Gizmos.DrawSphere((Vector2)_firstElementPosition, radius);
-            Gizmos.DrawSphere((Vector2)_lastElementPosition, radius);
-            Gizmos.DrawLine((Vector2)_firstElementPosition, (Vector2)_lastElementPosition);
+            Gizmos.DrawSphere((Vector2)FirstElementPosition, radius);
+            Gizmos.DrawSphere((Vector2)LastElementPosition, radius);
+            Gizmos.DrawLine((Vector2)FirstElementPosition, (Vector2)LastElementPosition);
         }
     }
 }

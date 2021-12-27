@@ -1,106 +1,105 @@
-﻿using System;
-using System.Collections;
+﻿#nullable enable
+
+using System;
 using System.Collections.Generic;
 using PaperWorks.Common;
 using PaperWorks.Common.Animations;
 using PaperWorks.Workers;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
-using UnityEngine.UI;
 using Object = UnityEngine.Object;
 
 namespace PaperWorks.Drawing
 {
-    public sealed class Drawer : MonoBehaviour
+    public class Drawer : IDisposable
     {
-        private const int MaxPointCount = 256;
+        protected const int MaxPointCount = 256;
 
-        private static readonly int ComputeBufferId = Shader.PropertyToID("Points");
-        private static readonly int TextureId = Shader.PropertyToID("Result");
+        protected static readonly int ComputeBufferId = UnityEngine.Shader.PropertyToID("Points");
+        protected static readonly int TextureId = UnityEngine.Shader.PropertyToID("Result");
 
-        [SerializeField] private ComputeShader _shader;
-        [SerializeField] private RenderTexture _texture;
-        [SerializeField] private WorkerHolderUI _workerHolderUI;
-        [SerializeField] private WorkerHolder _workerHolder;
-        [SerializeField] private GameObject _humanPrefab;
-        [SerializeField] private Transform _foreGround;
-        [SerializeField] private float _humanMoveTime;
+        protected readonly Transform Transform;
+        protected readonly ComputeShader Shader;
+        protected readonly RenderTexture Texture;
+        protected readonly WorkerHolderUI WorkerHolderUI;
+        protected readonly WorkerHolder WorkerHolder;
+        protected readonly GameObject HumanPrefab;
+        protected readonly Transform ForeGround;
+        protected readonly float HumanMoveTime;
+        protected readonly List<Vector2> Points = new List<Vector2>();
 
-        private readonly List<Vector2> _points = new List<Vector2>();
-        private ComputeBuffer _computeBuffer;
-        private int _mainShaderKernel;
+        protected readonly int MainShaderKernel;
+        protected readonly ComputeBuffer ComputeBuffer;
 
-        private void OnValidate()
-            => this.AssertNotNull(_shader, _texture, _workerHolderUI, _workerHolder, _humanPrefab, _foreGround);
 
-        private void Awake()
+        public Drawer(
+            Transform transform, ComputeShader shader, RenderTexture texture, WorkerHolderUI workerHolderUI,
+            WorkerHolder workerHolder, GameObject humanPrefab, Transform foreGround, float humanMoveTime
+        )
         {
-            _mainShaderKernel = _shader.FindKernel("Draw");
+            Transform = transform;
+            Shader = shader;
+            Texture = texture;
+            WorkerHolderUI = workerHolderUI;
+            WorkerHolder = workerHolder;
+            HumanPrefab = humanPrefab;
+            ForeGround = foreGround;
+            HumanMoveTime = humanMoveTime;
 
-            _computeBuffer = new ComputeBuffer(Drawer.MaxPointCount, sizeof(float) * 4);
-            _shader.SetBuffer(_mainShaderKernel, Drawer.ComputeBufferId, _computeBuffer);
+            MainShaderKernel = Shader.FindKernel("Draw");
 
-            _texture = new RenderTexture(16, 16, 1, GraphicsFormat.R32G32B32A32_SFloat)
+            ComputeBuffer = new ComputeBuffer(Drawer.MaxPointCount, sizeof(float) * 4);
+            Shader.SetBuffer(MainShaderKernel, Drawer.ComputeBufferId, ComputeBuffer);
+
+            Texture = new RenderTexture(16, 16, 1, GraphicsFormat.R32G32B32A32_SFloat)
             {
                 enableRandomWrite = true
             };
 
-            _shader.SetTexture(_mainShaderKernel, Drawer.TextureId, _texture);
+            Shader.SetTexture(MainShaderKernel, Drawer.TextureId, Texture);
         }
 
         public void AddPoint(Vector2 point)
         {
-            _points.Add(point);
-
-            Debug.Log(_points.Count);
-
-            // if (_points.Count >= MaxPointCount)
-            // {
-            //     EndDrawing();
-            // }
+            Points.Add(point);
         }
 
         public void EndDrawing()
         {
-            Debug.Log("End");
+            //Debug.Log("End");
 
             // todo
             //Draw();
             CreateHuman();
             //GetComponent<RawImage>().texture = _texture;
 
-            _points.Clear();
+            Points.Clear();
         }
 
-        // todo
-        // private IEnumerator Start()
-        // {
-        //     while (true)
-        //     {
-        //         CreateHuman();
-        //
-        //         yield return new WaitForSeconds(1.0f);
-        //     }
-        // }
-
-        private void CreateHuman()
+        protected void CreateHuman()
         {
-            GameObject human = Object.Instantiate(_humanPrefab, _foreGround, true);
+            GameObject human = Object.Instantiate(HumanPrefab, ForeGround, true);
 
-            Action<float> tConsumer = t => TConsumers.MovePosition(human.transform,
-                                                                   transform.position,
-                                                                   _workerHolderUI.NewElementPosition,
-                                                                   t);
+            Action<float> tConsumer = t => TConsumers.MovePosition(
+                human.transform,
+                Transform.position,
+                WorkerHolderUI.NewElementPosition,
+                t
+            );
 
-            StartCoroutine(Interpolation.Interpolate(_humanMoveTime,
-                                                     tConsumer.Normalized(NormalizationFunctions.SmoothStep),
-                                                     () => _workerHolder.Enqueue(human.transform)));
+            Interpolation.Interpolate(
+                HumanMoveTime,
+                tConsumer.Normalized(NormalizationFunctions.SmoothStep),
+                () => WorkerHolder.Enqueue(human.transform)
+            );
         }
 
-        private void Draw()
+        protected void Draw()
         {
-            _computeBuffer.SetData(_points);
-            _shader.Dispatch(_mainShaderKernel, 1, 1, 1);
+            ComputeBuffer.SetData(Points);
+            Shader.Dispatch(MainShaderKernel, 1, 1, 1);
         }
+
+        public void Dispose() => ComputeBuffer.Dispose();
     }
 }

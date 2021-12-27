@@ -1,2 +1,5 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+Test.txt filter=lfs diff=lfs merge=lfs -text
+20211023_201318.mp4 filter=lfs diff=lfs merge=lfs -text
+zip.zip filter=lfs diff=lfs merge=lfs -text

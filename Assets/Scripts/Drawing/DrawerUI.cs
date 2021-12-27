@@ -1,61 +1,73 @@
-﻿using System;
+﻿#nullable enable
+
+using System;
 using PaperWorks.Common;
 using PaperWorks.Common.Animations;
-using UnityEditor.U2D;
 using UnityEngine;
 using UnityEngine.UI;
 
 namespace PaperWorks.Drawing
 {
-    public sealed class DrawerUI : MonoBehaviour
+    public class DrawerUI
     {
-        [SerializeField] private Button _button;
-        [SerializeField] private DrawerInput _drawerInput;
-        [SerializeField] private Vector2Int _visiblePosition;
-        [SerializeField] private Vector2Int _invisiblePosition;
-        [SerializeField] private float _animationTime;
+        protected readonly Button Button;
+        protected readonly DrawerInput DrawerInput;
+        protected readonly Vector2Int VisiblePosition;
+        protected readonly Vector2Int InvisiblePosition;
+        protected readonly float AnimationTime;
 
         private RectTransform _rectTransform;
 
         private bool _isVisible = false;
 
-        private void OnValidate() => this.AssertNotNull(_button, _drawerInput);
+        public DrawerUI(
+            Button button, DrawerInput drawerInput, Vector2Int visiblePosition, Vector2Int invisiblePosition,
+            float animationTime, RectTransform rectTransform
+        )
+        {
+            Button = button;
+            DrawerInput = drawerInput;
+            VisiblePosition = visiblePosition;
+            InvisiblePosition = invisiblePosition;
+            AnimationTime = animationTime;
 
-        private void Awake() => _rectTransform = GetComponent<RectTransform>();
-
-        private void Start() => _drawerInput.enabled = false;
+            _rectTransform = rectTransform;
+            DrawerInput.IsActive = false;
+        }
 
         public void ChangeVisibility()
         {
-            _button.interactable = false;
+            Button.interactable = false;
             GetStartAndEndPosition(out Vector2Int start, out Vector2Int end);
 
             Action<float> TConsumer = t => _rectTransform.anchoredPosition = Vector2.Lerp(start, end, t);
 
             void EndHandler()
             {
-                _button.interactable = true;
-                _drawerInput.enabled = _isVisible;
+                Button.interactable = true;
+                DrawerInput.IsActive = _isVisible;
             }
 
-            StartCoroutine(Interpolation.Interpolate(_animationTime,
-                                                     TConsumer.Normalized(NormalizationFunctions.SmoothStep),
-                                                     EndHandler));
+            Interpolation.Interpolate(
+                AnimationTime,
+                TConsumer.Normalized(NormalizationFunctions.SmoothStep),
+                EndHandler
+            );
 
             _isVisible = !_isVisible;
         }
 
-        public void GetStartAndEndPosition(out Vector2Int start, out Vector2Int end)
+        protected void GetStartAndEndPosition(out Vector2Int start, out Vector2Int end)
         {
             if (_isVisible)
             {
-                start = _visiblePosition;
-                end = _invisiblePosition;
+                start = VisiblePosition;
+                end = InvisiblePosition;
             }
             else
             {
-                start = _invisiblePosition;
-                end = _visiblePosition;
+                start = InvisiblePosition;
+                end = VisiblePosition;
             }
         }
     }

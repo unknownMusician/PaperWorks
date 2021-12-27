@@ -1,40 +1,28 @@
+#nullable enable
+
 using System;
-using System.Collections;
 using System.Collections.Generic;
-using JetBrains.Annotations;
 using UnityEngine;
-using Object = UnityEngine.Object;
 
 namespace PaperWorks.Workers
 {
-    public sealed class WorkerHolder : MonoBehaviour
+    public sealed class WorkerHolder
     {
-        // todo
-        // [SerializeField] private GameObject _prefab;
-        [NotNull] private readonly Queue<Transform> _workers = new Queue<Transform>();
+        private readonly Queue<Transform> _workers = new Queue<Transform>();
+        private readonly Transform _transform;
 
-        public event Action<IEnumerable<Transform>> OnChange;
+        public WorkerHolder(Transform transform) => _transform = transform;
+        
+        public event Action<IEnumerable<Transform>>? OnChange;
 
-        // todo
-        // private IEnumerator Start()
-        // {
-        //     while (true)
-        //     {
-        //         Enqueue(Object.Instantiate(_prefab).transform);
-        //
-        //         yield return new WaitForSeconds(1.0f);
-        //     }
-        // }
-
-        public void Enqueue([NotNull] Transform worker)
+        public void Enqueue(Transform worker)
         {
             _workers.Enqueue(worker);
-            worker.SetParent(transform);
+            worker.SetParent(_transform);
 
             HandleChange();
         }
 
-        [NotNull]
         public Transform Dequeue()
         {
             Transform worker = _workers.Dequeue();

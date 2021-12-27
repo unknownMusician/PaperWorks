@@ -1,4 +1,6 @@
-﻿namespace PaperWorks.Common.Animations
+﻿#nullable enable
+
+namespace PaperWorks.Common.Animations
 {
     public sealed class Cancellation
     {

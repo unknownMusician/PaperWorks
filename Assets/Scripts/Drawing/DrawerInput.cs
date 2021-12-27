@@ -1,53 +1,83 @@
-﻿using System.Collections;
+﻿#nullable enable
+
+using System;
+using System.Collections;
+using System.Threading;
+using System.Threading.Tasks;
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 namespace PaperWorks.Drawing
 {
-    public sealed class DrawerInput : MonoBehaviour
+    public class DrawerInput : IPointerDownHandler, IDisposable
     {
-        private const int LeftMouseButtonIndex = 0;
-
-        [SerializeField] private Drawer _drawer;
-
+        protected const int LeftMouseButtonIndex = 0;
+        
+        protected readonly Drawer Drawer;
+        protected readonly CancellationTokenSource AliveCancellation;
+        
         private bool _isAlive = false;
+        public bool IsActive = false;
 
-        private void Update()
+        public DrawerInput(Drawer drawer)
         {
-            if (Input.GetMouseButtonDown(DrawerInput.LeftMouseButtonIndex))
-            {
-                HandleMouseButtonDown();
-            }
+            Drawer = drawer;
+            AliveCancellation = new CancellationTokenSource();
 
-            if (Input.GetMouseButtonUp(DrawerInput.LeftMouseButtonIndex))
+            ListenInputAsync();
+        }
+        
+        protected async Task ListenInputAsync()
+        {
+            while (!AliveCancellation.IsCancellationRequested)
             {
-                HandleMouseButtonUp();
+                if (Input.GetMouseButtonUp(DrawerInput.LeftMouseButtonIndex))
+                {
+                    HandleMouseButtonUp();
+                }
+
+                await Task.Yield();
             }
         }
 
-        private void HandleMouseButtonDown()
+        protected void HandleMouseButtonDown()
         {
+            if (!IsActive)
+            {
+                return;
+            }
+            
             _isAlive = true;
-            StartCoroutine(Drawing());
+            
+            Drawing();
         }
 
-        private void HandleMouseButtonUp()
+        protected void HandleMouseButtonUp()
         {
             if (_isAlive)
             {
-                _drawer.EndDrawing();
+                Drawer.EndDrawing();
             }
 
             _isAlive = false;
         }
 
-        private IEnumerator Drawing()
+        protected async Task Drawing()
         {
             while (_isAlive)
             {
-                _drawer.AddPoint(Input.mousePosition);
+                Drawer.AddPoint(Input.mousePosition);
 
-                yield return null;
+                await Task.Yield();
             }
+        }
+
+        public void OnPointerDown(PointerEventData eventData) => HandleMouseButtonDown();
+        
+        public void Dispose()
+        {
+            _isAlive = false;
+            AliveCancellation.Cancel();
         }
     }
 }

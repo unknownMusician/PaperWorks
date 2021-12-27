@@ -1,13 +1,16 @@
-﻿using System;
+﻿#nullable enable
+
+using System;
 using System.Collections;
-using JetBrains.Annotations;
+using System.Threading;
+using System.Threading.Tasks;
 using UnityEngine;
 
 namespace PaperWorks.Common.Animations
 {
     public static class Interpolation
     {
-        public static IEnumerator Interpolate(float time, [NotNull] Action<float> tConsumer)
+        public static async Task Interpolate(float time, Action<float> tConsumer)
         {
             float t = 0.0f;
 
@@ -16,54 +19,47 @@ namespace PaperWorks.Common.Animations
                 t += Time.deltaTime / time;
                 tConsumer(t);
 
-                yield return null;
+                await Task.Yield();
             }
 
             tConsumer(t);
         }
 
-        public static IEnumerator Interpolate(
-            [NotNull] Cancellation cancellation, float time, [NotNull] Action<float> tConsumer
-        )
+        public static async Task Interpolate(CancellationToken cancellation, float time, Action<float> tConsumer)
         {
             float t = 0.0f;
 
-            while (!cancellation.IsCanceled && t < 1.0f)
+            while (!cancellation.IsCancellationRequested && t < 1.0f)
             {
                 t += Time.deltaTime / time;
                 tConsumer(t);
 
-                yield return null;
+                await Task.Yield();
             }
 
             tConsumer(t);
         }
 
-        public static IEnumerator Interpolate(
-            float time, [NotNull] Action<float> tConsumer, [NotNull] Action endHandler
-        )
+        public static async Task  Interpolate(float time, Action<float> tConsumer, Action endHandler)
         {
-            yield return Interpolation.Interpolate(time, tConsumer);
+            await Interpolate(time, tConsumer);
 
             endHandler();
         }
 
-        public static IEnumerator Interpolate(
-            [NotNull] Cancellation cancellation, float time, [NotNull] Action<float> tConsumer, [NotNull] Action endHandler
+        public static async Task  Interpolate(
+            CancellationToken cancellation, float time, Action<float> tConsumer, Action endHandler
         )
         {
-            yield return Interpolation.Interpolate(cancellation, time, tConsumer);
+            await Interpolation.Interpolate(cancellation, time, tConsumer);
 
-            while (!cancellation.IsCanceled)
+            while (!cancellation.IsCancellationRequested)
             {
                 endHandler();
             }
         }
 
-        [NotNull]
-        public static Action<float> Normalized(
-            [NotNull] this Action<float> tConsumer, [NotNull] Func<float, float> normalizer
-        )
+        public static Action<float> Normalized(this Action<float> tConsumer, Func<float, float> normalizer)
             => (t) => tConsumer(normalizer(t));
     }
 }
